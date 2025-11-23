@@ -10,6 +10,18 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<QuestionPaperService>();
 
+// 👉 CORS CONFIG
+var corsPolicyName = "AllowFrontend";
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(corsPolicyName, policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:3000")  // your Next.js dev URL
+            .AllowAnyHeader()
+            .AllowAnyMethod();                     // GET, POST, OPTIONS, etc.
+    });
+});
 
 var app = builder.Build();
 
@@ -21,6 +33,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors(corsPolicyName);
 
 var summaries = new[]
 {
