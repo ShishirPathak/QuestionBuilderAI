@@ -13,10 +13,13 @@ namespace QuestionBuilderAI.Api1.Controllers
     public class QuestionPaperController : ControllerBase
     {
         private readonly QuestionPaperService _service;
+        private readonly OcrClient _ocrClient;
 
-        public QuestionPaperController(QuestionPaperService service)
+        public QuestionPaperController(QuestionPaperService service, OcrClient ocrClient)
         {
             _service = service;
+            _ocrClient = ocrClient;
+
         }
 
         [HttpPost("generate")]
@@ -47,54 +50,19 @@ namespace QuestionBuilderAI.Api1.Controllers
             if (files == null || files.Count == 0)
                 return BadRequest("No files were uploaded.");
 
-            // 1) Send to Python OCR+AI service
-            using var httpClient = new HttpClient();
-
-            // NOTE: adjust URL if needed
-            var pythonServiceUrl = "http://127.0.0.1:8000/ocr/parse-question-paper";
-
-            using var form = new MultipartFormDataContent();
-
-            // Add simple fields
-            form.Add(new StringContent(schoolName), "schoolName");
-            form.Add(new StringContent(examTitle), "examTitle");
-            form.Add(new StringContent(@class), "className");
-            form.Add(new StringContent(subject), "subject");
-            form.Add(new StringContent(maxMarks.ToString()), "maxMarks");
-            form.Add(new StringContent(duration), "duration");
-
-            // Add files
-            foreach (var file in files)
-            {
-                if (file.Length <= 0)
-                    continue;
-
-                var streamContent = new StreamContent(file.OpenReadStream());
-                streamContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
-
-                // "files" must match FastAPI parameter name
-                form.Add(streamContent, "files", file.FileName);
-            }
-
-            HttpResponseMessage ocrResponse;
+            // 1) Call OCR + LLM service via injected OcrClient
+            string json;
             try
             {
-                ocrResponse = await httpClient.PostAsync(pythonServiceUrl, form);
+                // OcrClient handles OCR_BASE_URL and multipart form creation
+                json = await _ocrClient.ParseQuestionPaperAsync(files.ToArray());
             }
             catch (Exception ex)
             {
                 return StatusCode(500, $"Error calling OCR service: {ex.Message}");
             }
 
-            if (!ocrResponse.IsSuccessStatusCode)
-            {
-                var errorText = await ocrResponse.Content.ReadAsStringAsync();
-                return StatusCode((int)ocrResponse.StatusCode,
-                    $"OCR service error: {ocrResponse.StatusCode} {errorText}");
-            }
-
-            var json = await ocrResponse.Content.ReadAsStringAsync();
-
+            // 2) Deserialize returned JSON into our ExamPaperModel
             ExamPaperModel? model;
             try
             {
@@ -113,7 +81,15 @@ namespace QuestionBuilderAI.Api1.Controllers
                 return StatusCode(500, "OCR service returned empty or invalid exam model.");
             }
 
-            // 2) Generate DOCX using existing service
+            // 3) Override exam meta from form (class/subject etc.) so template selection works
+            model.SchoolName = schoolName;
+            model.ExamTitle = examTitle;
+            model.Class = @class;
+            model.Subject = subject;
+            model.MaxMarks = maxMarks;
+            model.Duration = duration;
+
+            // 4) Generate DOCX
             var fileBytes = _service.GenerateQuestionPaperDocx(model);
 
             var safeSubject = (model.Subject ?? subject ?? "Subject").Replace(" ", "_");
@@ -125,6 +101,7 @@ namespace QuestionBuilderAI.Api1.Controllers
                 fileName
             );
         }
+
     }
 
 }
