@@ -82,14 +82,18 @@ async def parse_question_paper(
 You are helping a school teacher digitize their exam question papers.
 
 You are given one or more images of a handwritten or printed question paper.
-The questions can be in Hindi, English, Sanskrit, or a mix.
+The questions are for school students and may be in Hindi, English, or Sanskrit.
 
-Your task:
-1. Read all the questions and any visible sections/instructions.
-2. Group questions into sections (Section A, B, etc.) if possible.
-3. Infer marks for each question if they are clearly written, otherwise default to 2.
-4. Try to detect the language of each question: "Hindi", "English", "Sanskrit" or "Mixed".
-5. Return ONLY valid JSON that matches this schema (no comments, no extra text):
+Your job:
+- Read all the questions and instructions.
+- Group questions into logical blocks that match how teachers write "Q.No.1", "Q.No.2", etc.
+- For each block, extract:
+  - qno (question number, like 1, 2, 3...)
+  - a short title/heading (e.g., "Answer in one word", "Answer the following questions", "Fill in the blanks")
+  - total marks for that Q.No group if visible
+  - the sub-questions inside that group (a, b, c, ...)
+
+Return data in this EXACT JSON shape (no extra keys, no comments, no explanation):
 
 {{
   "schoolName": "string",
@@ -100,13 +104,13 @@ Your task:
   "duration": "string",
   "sections": [
     {{
-      "name": "string",
-      "instructions": "string",
+      "name": "string",               // e.g. "Q.No.1 Answer in one word."
+      "instructions": "string",       // any hint line, or "" if none
       "questions": [
         {{
-          "number": number,
-          "text": "string",
-          "marks": number,
+          "number": number,           // 1,2,3,... (will later become (a),(b),(c))
+          "text": "string",           // full question text
+          "marks": number,            // total marks for this GROUP (same for all in the group)
           "language": "Hindi" | "English" | "Sanskrit" | "Mixed"
         }}
       ]
@@ -114,7 +118,15 @@ Your task:
   ]
 }}
 
-Use these defaults if the information is not present on the paper:
+Important formatting rules:
+- Each major question group like "Q.No.1", "Q.No.2" MUST become one element in "sections".
+- The "name" property should start with "Q.No." followed by the number and the title.
+  Example: "Q.No.1 Answer in one word."
+- If the total marks for a group are given (e.g. (10)), set "marks" for EACH question in that group to that total value.
+  (The backend will only read the marks from the first question.)
+- "number" for questions should be 1,2,3,... in the order they appear within that group.
+
+Use these defaults if the information is missing on the paper:
 - schoolName: "{schoolName}"
 - examTitle: "{examTitle}"
 - class: "{className}"
@@ -123,8 +135,9 @@ Use these defaults if the information is not present on the paper:
 - duration: "{duration}"
 
 Very important:
-- Respond with JSON ONLY. No explanation text.
+- Respond with VALID JSON ONLY. No ``` fences. No natural language explanation.
 """
+
 
     # Call Gemini Vision
     try:
@@ -165,6 +178,33 @@ Very important:
             status_code=500,
             detail="Gemini returned no sections/questions.",
         )
+
+    # --- NEW: sort sections by Q.No. extracted from section["name"] ---
+
+    def extract_qno(section: Dict[str, Any]) -> int:
+        name = section.get("name", "") or ""
+        # Try to find patterns like Q.No.1, Q.1, Q1 etc.
+        m = re.search(r"q\.?\s*no\.?\s*(\d+)", name, flags=re.IGNORECASE)
+        if not m:
+            m = re.search(r"q\.?\s*(\d+)", name, flags=re.IGNORECASE)
+        if m:
+            return int(m.group(1))
+        # fallback if we can't parse → push to end
+        return 9999
+
+        sections = data.get("sections", [])
+
+        # Sort sections by Q.No.
+        sections.sort(key=extract_qno)
+
+    # Also sort questions inside each section by their "number"
+        for s in sections:
+            qs = s.get("questions", [])
+        try:
+            qs.sort(key=lambda q: int(q.get("number", 0)))
+        except Exception:
+            pass
+        s["questions"] = qs
 
     # Ensure metadata is filled even if Gemini omits it
     data.setdefault("schoolName", schoolName)
