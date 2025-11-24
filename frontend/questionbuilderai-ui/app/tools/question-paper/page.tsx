@@ -3,53 +3,22 @@
 import { ChangeEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-type Question = {
-  number: number;
-  text: string;
-  marks: number;
-  language?: string;
-};
-
-type Section = {
-  name: string;
-  instructions: string;
-  questions: Question[];
-};
-
-type ExamPaperModel = {
-  schoolName: string;
-  examTitle: string;
-  class: string;
-  subject: string;
-  maxMarks: number;
-  duration: string;
-  sections: Section[];
-};
-
 export default function QuestionPaperToolPage() {
   const router = useRouter();
 
   const [schoolName, setSchoolName] = useState<string>(
-    "ABC Public School, Ranchi"
+    "Indira Gandhi Memorial Public School"
   );
   const [examTitle, setExamTitle] = useState<string>(
-    "Half-Yearly Examination – 2025"
+    "1st Terminal Examination 2025–2026"
   );
-  const [className, setClassName] = useState<string>("9");
-  const [subject, setSubject] = useState<string>("Sanskrit");
-  const [maxMarks, setMaxMarks] = useState<number>(80);
-  const [duration, setDuration] = useState<string>("3 Hours");
-
-  const [sectionName, setSectionName] = useState<string>("Section A");
-  const [instructions, setInstructions] =
-    useState<string>("उत्तर लिखिए।");
-
-  const [questionsText, setQuestionsText] = useState<string>(
-    "योगः कर्मसु कौशलम् का अर्थ लिखिए।\nExplain the law of gravitation."
-  );
+  const [className, setClassName] = useState<string>("V");
+  const [subject, setSubject] = useState<string>("English II");
+  const [maxMarks, setMaxMarks] = useState<number>(100);
+  const [duration, setDuration] = useState<string>("2 Hours");
 
   const [files, setFiles] = useState<File[]>([]);
-  const [loadingManual, setLoadingManual] = useState<boolean>(false);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [loadingImage, setLoadingImage] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
@@ -63,40 +32,6 @@ export default function QuestionPaperToolPage() {
   const apiBase = process.env
     .NEXT_PUBLIC_API_BASE_URL as string | undefined;
 
-  const buildExamModelFromQuestionsText = (): ExamPaperModel => {
-    const lines = questionsText
-      .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
-
-    if (lines.length === 0) {
-      throw new Error("Please enter at least one question.");
-    }
-
-    const questions: Question[] = lines.map((text, index) => ({
-      number: index + 1,
-      text,
-      marks: 2, // default for now
-      language: "",
-    }));
-
-    return {
-      schoolName,
-      examTitle,
-      class: className,
-      subject,
-      maxMarks: Number(maxMarks),
-      duration,
-      sections: [
-        {
-          name: sectionName,
-          instructions,
-          questions,
-        },
-      ],
-    };
-  };
-
   const downloadBlobAsFile = (blob: Blob, filename: string) => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -108,44 +43,15 @@ export default function QuestionPaperToolPage() {
     window.URL.revokeObjectURL(url);
   };
 
-  const handleGenerateFromManual = async () => {
-    setError("");
-    setLoadingManual(true);
-
-    try {
-      if (!apiBase) {
-        throw new Error("API base URL is not configured.");
-      }
-
-      const model = buildExamModelFromQuestionsText();
-
-      const response = await fetch(`${apiBase}/api/QuestionPaper/generate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(model),
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`API error: ${response.status} ${text}`);
-      }
-
-      const blob = await response.blob();
-      const safeSubject = subject.replace(/\s+/g, "_");
-      downloadBlobAsFile(blob, `QuestionPaper_${safeSubject}.docx`);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Something went wrong.");
-    } finally {
-      setLoadingManual(false);
-    }
-  };
-
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files ?? []);
     setFiles(selected);
+
+    // Clean up old previews
+    previewUrls.forEach((u) => URL.revokeObjectURL(u));
+
+    const urls = selected.map((file) => URL.createObjectURL(file));
+    setPreviewUrls(urls);
   };
 
   const handleGenerateFromImage = async () => {
@@ -166,6 +72,7 @@ export default function QuestionPaperToolPage() {
       const formData = new FormData();
       formData.append("schoolName", schoolName);
       formData.append("examTitle", examTitle);
+      // Backend expects "class"
       formData.append("class", className);
       formData.append("subject", subject);
       formData.append("maxMarks", String(maxMarks));
@@ -175,7 +82,6 @@ export default function QuestionPaperToolPage() {
         formData.append("files", file);
       });
 
-      // /from-image endpoint not implemented yet
       const response = await fetch(
         `${apiBase}/api/QuestionPaper/from-image`,
         {
@@ -199,7 +105,7 @@ export default function QuestionPaperToolPage() {
       console.error(err);
       setError(
         err.message ||
-          "Something went wrong while generating from image. (Endpoint may not be implemented yet.)"
+          "Something went wrong while generating from image."
       );
     } finally {
       setLoadingImage(false);
@@ -207,7 +113,7 @@ export default function QuestionPaperToolPage() {
   };
 
   return (
-    <main className="min-h-screen px-4 py-6 flex justify-center">
+    <main className="min-h-screen px-4 py-6 flex justify-center bg-slate-50">
       <div className="w-full max-w-5xl">
         <button
           onClick={() => router.push("/dashboard")}
@@ -216,13 +122,15 @@ export default function QuestionPaperToolPage() {
           ← Back to dashboard
         </button>
 
-        <h1 className="text-2xl font-bold text-slate-800 mb-1">
-          Question Paper Generator
-        </h1>
-        <p className="text-sm text-slate-500 mb-4">
-          Generate formatted question papers from typed questions or scanned
-          images.
-        </p>
+        <header className="mb-4">
+          <h1 className="text-2xl font-bold text-slate-900 mb-1">
+            Question Paper Builder (AI)
+          </h1>
+          <p className="text-sm text-slate-500">
+            Upload handwritten question paper photos and get a clean,
+            printable DOCX in your school&apos;s format.
+          </p>
+        </header>
 
         {error && (
           <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
@@ -231,9 +139,12 @@ export default function QuestionPaperToolPage() {
         )}
 
         {/* Exam details */}
-        <section className="mb-6 bg-white rounded-xl shadow p-4">
-          <h2 className="text-sm font-semibold text-slate-700 mb-3">
-            Exam Details
+        <section className="mb-6 bg-white rounded-2xl shadow-sm border border-slate-100 p-4 md:p-5">
+          <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-sky-100 text-sky-700 text-xs font-bold">
+              1
+            </span>
+            Exam details
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
@@ -244,7 +155,7 @@ export default function QuestionPaperToolPage() {
                 type="text"
                 value={schoolName}
                 onChange={(e) => setSchoolName(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>
             <div>
@@ -255,30 +166,34 @@ export default function QuestionPaperToolPage() {
                 type="text"
                 value={examTitle}
                 onChange={(e) => setExamTitle(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-700">
                 Class
               </label>
-              <input
-                type="text"
+              <select
                 value={className}
                 onChange={(e) => setClassName(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-              />
+                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                <option value="V">Std V</option>
+                {/* future: add more classes */}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-700">
                 Subject
               </label>
-              <input
-                type="text"
+              <select
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-              />
+                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                <option value="English II">English II</option>
+                {/* future: add more subjects */}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-700">
@@ -290,7 +205,7 @@ export default function QuestionPaperToolPage() {
                 onChange={(e) =>
                   setMaxMarks(Number(e.target.value) || 0)
                 }
-                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>
             <div>
@@ -301,117 +216,90 @@ export default function QuestionPaperToolPage() {
                 type="text"
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>
           </div>
         </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Manual mode */}
-          <section className="bg-white rounded-xl shadow p-4">
-            <h2 className="text-sm font-semibold text-slate-700 mb-3">
-              Mode A – Typed / Pasted Questions
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-700">
-                  Section Name
-                </label>
-                <input
-                  type="text"
-                  value={sectionName}
-                  onChange={(e) => setSectionName(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
+        {/* Image upload + preview */}
+        <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 md:p-5">
+          <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
+              2
+            </span>
+            Upload handwritten question paper photos
+          </h2>
+
+          <p className="text-xs text-slate-500 mb-3">
+            You can select multiple pages at once (e.g., Page 1, Page 2, Page
+            3...). The system will read them using AI and generate a single
+            question paper in your school&apos;s format.
+          </p>
+
+          {/* Dropzone-style input */}
+          <label className="mt-2 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 hover:border-emerald-400 transition-colors rounded-xl px-4 py-8 cursor-pointer bg-slate-50">
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 mb-2">
+              📄
+            </span>
+            <span className="text-sm font-medium text-slate-800">
+              Click to upload question paper photos
+            </span>
+            <span className="text-xs text-slate-500 mt-1">
+              JPG, PNG, HEIC – multiple pages allowed
+            </span>
+            {files.length > 0 && (
+              <span className="mt-2 text-xs text-emerald-600 font-medium">
+                {files.length} file(s) selected
+              </span>
+            )}
+          </label>
+
+          {/* Preview grid */}
+          {previewUrls.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-xs font-semibold text-slate-700 mb-2">
+                Preview
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {previewUrls.map((url, idx) => (
+                  <div
+                    key={idx}
+                    className="relative rounded-lg overflow-hidden border border-slate-200 bg-slate-100"
+                  >
+                    <img
+                      src={url}
+                      alt={`Uploaded page ${idx + 1}`}
+                      className="h-40 w-full object-cover"
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/40 text-[10px] text-white px-2 py-1">
+                      Page {idx + 1}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-700">
-                  Instructions
-                </label>
-                <input
-                  type="text"
-                  value={instructions}
-                  onChange={(e) => setInstructions(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-              </div>
             </div>
+          )}
 
-            <div>
-              <label className="block text-xs font-medium text-slate-700">
-                Questions (one per line)
-              </label>
-              <textarea
-                rows={8}
-                value={questionsText}
-                onChange={(e) => setQuestionsText(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-                placeholder={`Type each question on a new line.\nExample:\nप्रकृति के नियम समझाइए।\nExplain the law of gravitation.`}
-              />
-              <p className="mt-1 text-xs text-slate-400">
-                For now, each question gets default 2 marks. We can add
-                per-question marks later.
-              </p>
-            </div>
-
-            <button
-              onClick={handleGenerateFromManual}
-              disabled={loadingManual}
-              className="mt-3 inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-60"
-            >
-              {loadingManual
-                ? "Generating..."
-                : "Generate DOCX from Typed Questions"}
-            </button>
-          </section>
-
-          {/* Image mode */}
-          <section className="bg-white rounded-xl shadow p-4">
-            <h2 className="text-sm font-semibold text-slate-700 mb-3">
-              Mode B – Upload Question Paper Image (AI)
-            </h2>
-            <p className="text-xs text-slate-500 mb-3">
-              Upload scanned or photographed question papers (handwritten or
-              printed). The system will use OCR + AI to extract questions and
-              generate a formatted DOCX. (Backend endpoint still needs to be
-              implemented.)
-            </p>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700">
-                Upload Images
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleFileChange}
-                className="mt-1 block w-full text-sm"
-              />
-              {files.length > 0 && (
-                <p className="mt-1 text-xs text-slate-500">
-                  Selected {files.length} file(s).
-                </p>
-              )}
-            </div>
-
+          <div className="mt-5 flex justify-end">
             <button
               onClick={handleGenerateFromImage}
-              disabled={loadingImage}
-              className="mt-3 inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+              disabled={loadingImage || files.length === 0}
+              className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
             >
               {loadingImage
-                ? "Processing images..."
-                : "Generate DOCX from Image (AI)"}
+                ? "Processing with AI..."
+                : "Generate DOCX from Images (AI)"}
             </button>
-
-            <p className="mt-2 text-xs text-amber-500">
-              Note: The <code>/api/QuestionPaper/from-image</code> endpoint is
-              not implemented yet. We'll add the OCR + AI backend next.
-            </p>
-          </section>
-        </div>
+          </div>
+        </section>
       </div>
     </main>
   );
