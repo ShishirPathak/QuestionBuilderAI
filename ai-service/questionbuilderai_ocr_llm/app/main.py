@@ -1,6 +1,6 @@
 import os
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+import re   # ← ADD THIS
 
 # Load .env (GEMINI_API_KEY must be set there)
 load_dotenv()
@@ -40,13 +41,13 @@ VISION_MODEL_NAME = "gemini-2.0-flash"
 
 @app.post("/ocr/parse-question-paper")
 async def parse_question_paper(
-    schoolName: str = Form(...),
-    examTitle: str = Form(...),
-    className: str = Form(...),
-    subject: str = Form(...),
-    maxMarks: int = Form(...),
-    duration: str = Form(...),
-    files: List[UploadFile] = File(...),
+    files: List[UploadFile] = File(...),              # required
+    schoolName: Optional[str] = Form(None),
+    examTitle: Optional[str] = Form(None),
+    className: Optional[str] = Form(None),
+    subject: Optional[str] = Form(None),
+    maxMarks: Optional[int] = Form(None),
+    duration: Optional[str] = Form(None),
 ) -> Dict[str, Any]:
     """
     Takes uploaded question paper images (handwritten/printed),
@@ -192,19 +193,20 @@ Very important:
         # fallback if we can't parse → push to end
         return 9999
 
-        sections = data.get("sections", [])
+    sections = data.get("sections", [])
 
-        # Sort sections by Q.No.
-        sections.sort(key=extract_qno)
+    # Sort sections by Q.No.
+    sections.sort(key=extract_qno)
 
     # Also sort questions inside each section by their "number"
-        for s in sections:
-            qs = s.get("questions", [])
-        try:
-            qs.sort(key=lambda q: int(q.get("number", 0)))
-        except Exception:
-            pass
-        s["questions"] = qs
+    for s in sections:
+        qs = s.get("questions", [])
+    try:
+        qs.sort(key=lambda q: int(q.get("number", 0)))
+    except Exception:
+        pass
+    
+    s["questions"] = qs
 
     # Ensure metadata is filled even if Gemini omits it
     data.setdefault("schoolName", schoolName)
