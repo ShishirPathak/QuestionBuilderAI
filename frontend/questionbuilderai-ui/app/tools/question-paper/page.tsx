@@ -29,8 +29,7 @@ export default function QuestionPaperToolPage() {
     }
   }, [router]);
 
-  const apiBase = process.env
-    .NEXT_PUBLIC_API_BASE_URL as string | undefined;
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL as string | undefined;
 
   const downloadBlobAsFile = (blob: Blob, filename: string) => {
     const url = window.URL.createObjectURL(blob);
@@ -82,13 +81,10 @@ export default function QuestionPaperToolPage() {
         formData.append("files", file);
       });
 
-      const response = await fetch(
-        `${apiBase}/api/QuestionPaper/from-image`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const response = await fetch(`${apiBase}/api/QuestionPaper/from-image`, {
+        method: "POST",
+        body: formData,
+      });
 
       if (!response.ok) {
         const text = await response.text();
@@ -97,15 +93,11 @@ export default function QuestionPaperToolPage() {
 
       const blob = await response.blob();
       const safeSubject = subject.replace(/\s+/g, "_");
-      downloadBlobAsFile(
-        blob,
-        `QuestionPaper_FromImage_${safeSubject}.docx`
-      );
+      downloadBlobAsFile(blob, `QuestionPaper_FromImage_${safeSubject}.docx`);
     } catch (err: any) {
       console.error(err);
       setError(
-        err.message ||
-          "Something went wrong while generating from image."
+        err.message || "Something went wrong while generating from image."
       );
     } finally {
       setLoadingImage(false);
@@ -127,8 +119,8 @@ export default function QuestionPaperToolPage() {
             Question Paper Builder (AI)
           </h1>
           <p className="text-sm text-slate-500">
-            Upload handwritten question paper photos and get a clean,
-            printable DOCX in your school&apos;s format.
+            Upload handwritten question paper photos and get a clean, printable
+            DOCX in your school&apos;s format.
           </p>
         </header>
 
@@ -169,32 +161,33 @@ export default function QuestionPaperToolPage() {
                 className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-700">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-slate-600">
                 Class
               </label>
-              <select
+              <input
+                type="text"
                 value={className}
                 onChange={(e) => setClassName(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-              >
-                <option value="V">Std V</option>
-                {/* future: add more classes */}
-              </select>
+                placeholder="e.g., V, VI, VII, Std 5, etc."
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+              />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-700">
+
+            {/* Subject (Text Field) */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-slate-600">
                 Subject
               </label>
-              <select
+              <input
+                type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-              >
-                <option value="English II">English II</option>
-                {/* future: add more subjects */}
-              </select>
+                placeholder="e.g., English II, Hindi, Math, EVS"
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+              />
             </div>
+
             <div>
               <label className="block text-xs font-medium text-slate-700">
                 Max Marks
@@ -202,9 +195,7 @@ export default function QuestionPaperToolPage() {
               <input
                 type="number"
                 value={maxMarks}
-                onChange={(e) =>
-                  setMaxMarks(Number(e.target.value) || 0)
-                }
+                onChange={(e) => setMaxMarks(Number(e.target.value) || 0)}
                 className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>
