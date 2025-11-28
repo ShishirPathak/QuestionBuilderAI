@@ -65,11 +65,6 @@ export default function LoginPage() {
             Login
           </button>
 
-          <p className="text-xs text-slate-400 text-center mt-2">
-            (For now, password is{" "}
-            <span className="font-mono">{HARDCODED_PASSWORD}</span>. You can
-            change it in code.)
-          </p>
         </form>
       </div>
     </main>
