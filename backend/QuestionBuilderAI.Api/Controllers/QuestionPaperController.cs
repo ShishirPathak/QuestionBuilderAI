@@ -7,6 +7,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 
 namespace QuestionBuilderAI.Api1.Controllers
 {
@@ -40,18 +41,17 @@ namespace QuestionBuilderAI.Api1.Controllers
         [HttpPost("from-image")]
         [DisableRequestSizeLimit]
         public async Task<IActionResult> GenerateFromImage(
-     [FromForm] string schoolName,
-     [FromForm] string examTitle,
-     [FromForm(Name = "class")] string @class,
-     [FromForm] string subject,
-     [FromForm] int maxMarks,
-     [FromForm] string duration,
-     [FromForm] List<IFormFile> files)
+    [FromForm] string schoolName,
+    [FromForm] string examTitle,
+    [FromForm(Name = "class")] string @class,
+    [FromForm] string subject,
+    [FromForm] int maxMarks,
+    [FromForm] string duration,
+    [FromForm] List<IFormFile> files)
         {
             if (files == null || files.Count == 0)
                 return BadRequest("No files were uploaded.");
 
-            // 1) Call OCR service
             string json;
             try
             {
@@ -63,31 +63,17 @@ namespace QuestionBuilderAI.Api1.Controllers
             }
 
             ExamPaperModel? model;
-
             try
             {
-                // Parse as JsonNode so we can fix bad maxMarks
-                var root = JsonNode.Parse(json)?.AsObject();
-                if (root is null)
-                {
-                    return StatusCode(500, "OCR service returned empty JSON.");
-                }
-
-                // Overwrite maxMarks with a clean numeric value from UI
-                // (ignore whatever OCR sent)
-                root["maxMarks"] = maxMarks;
-
-                // Optional: also normalize duration if you want
-                // root["duration"] = duration;
-
-                var safeJson = root.ToJsonString();
+                // ✅ Normalize maxMarks + question marks before deserialization
+                var normalizedJson = NormalizeOcrJson(json, maxMarks, duration);
 
                 var options = new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
                 };
 
-                model = JsonSerializer.Deserialize<ExamPaperModel>(safeJson, options);
+                model = JsonSerializer.Deserialize<ExamPaperModel>(normalizedJson, options);
             }
             catch (Exception ex)
             {
@@ -99,7 +85,7 @@ namespace QuestionBuilderAI.Api1.Controllers
                 return StatusCode(500, "OCR service returned empty or invalid exam model.");
             }
 
-            // 2) Override meta fields from form (always trust UI values)
+            // Override meta with trusted form values
             model.SchoolName = schoolName;
             model.ExamTitle = examTitle;
             model.Class = @class;
@@ -107,18 +93,21 @@ namespace QuestionBuilderAI.Api1.Controllers
             model.MaxMarks = maxMarks;
             model.Duration = duration;
 
-            // 3) Generate DOCX
             var fileBytes = _service.GenerateQuestionPaperDocx(model);
 
+            var safeClass = (model.Class ?? @class ?? "Class").Replace(" ", "_");
             var safeSubject = (model.Subject ?? subject ?? "Subject").Replace(" ", "_");
-            var fileName = $"QuestionPaper_FromImage_{safeSubject}.docx";
+
+            var fileName = $"{safeClass}_{safeSubject}_QuestionPaper.docx";
 
             return File(
                 fileBytes,
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 fileName
             );
+
         }
+
 
 
         // [HttpPost("from-image-hindi-krutidev")]
@@ -185,6 +174,65 @@ namespace QuestionBuilderAI.Api1.Controllers
         //             fileName
         //         );
         //     }
+
+        private static string NormalizeOcrJson(string json, int maxMarksFromForm, string durationFromForm)
+        {
+            var root = JsonNode.Parse(json)?.AsObject();
+            if (root is null)
+                throw new InvalidOperationException("OCR JSON root is null.");
+
+            // Always trust form values for maxMarks & duration
+            root["maxMarks"] = maxMarksFromForm;
+            root["duration"] = durationFromForm;
+
+            // Normalize question marks: sections[*].questions[*].marks
+            if (root.TryGetPropertyValue("sections", out var sectionsNode) &&
+                sectionsNode is JsonArray sectionsArray)
+            {
+                foreach (var sectionNode in sectionsArray)
+                {
+                    if (sectionNode is not JsonObject sectionObj) continue;
+
+                    if (!sectionObj.TryGetPropertyValue("questions", out var questionsNode) ||
+                        questionsNode is not JsonArray questionsArray)
+                        continue;
+
+                    foreach (var qNode in questionsArray)
+                    {
+                        if (qNode is not JsonObject qObj) continue;
+
+                        if (!qObj.TryGetPropertyValue("marks", out var marksNode) || marksNode is null)
+                        {
+                            // If no marks given, default 0
+                            qObj["marks"] = 0;
+                            continue;
+                        }
+
+                        // Convert whatever is there into a clean int
+                        var marksStr = marksNode.ToString().Trim();
+
+                        // Try direct int parse
+                        if (!int.TryParse(marksStr, out var marksInt))
+                        {
+                            // Fallback: extract first number from string ("2 marks" -> 2)
+                            var match = Regex.Match(marksStr, @"\d+");
+                            if (match.Success && int.TryParse(match.Value, out var extracted))
+                            {
+                                marksInt = extracted;
+                            }
+                            else
+                            {
+                                marksInt = 0; // last-resort default
+                            }
+                        }
+
+                        qObj["marks"] = marksInt;
+                    }
+                }
+            }
+
+            return root.ToJsonString();
+        }
     }
 
 }

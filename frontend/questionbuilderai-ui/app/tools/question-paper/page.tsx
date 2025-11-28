@@ -92,8 +92,16 @@ export default function QuestionPaperToolPage() {
       }
 
       const blob = await response.blob();
-      const safeSubject = subject.replace(/\s+/g, "_");
-      downloadBlobAsFile(blob, `QuestionPaper_FromImage_${safeSubject}.docx`);
+
+      // Safe class & subject for filename
+      const safeClass =
+        (className && className.trim().replace(/\s+/g, "_")) || "Class";
+      const safeSubject =
+        (subject && subject.trim().replace(/\s+/g, "_")) || "Subject";
+
+      const filename = `${safeClass}_${safeSubject}_QuestionPaper.docx`;
+
+      downloadBlobAsFile(blob, filename);
     } catch (err: any) {
       console.error(err);
       setError(
