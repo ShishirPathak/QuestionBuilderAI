@@ -1,4 +1,4 @@
-# QuestionBuilderAI 📚✏️
+# QuestionBuilderAI
 
 QuestionBuilderAI is an AI-powered tool that helps teachers convert handwritten question paper photos into clean, printable, formatted DOCX exam papers. It supports English and experimental Hindi (KrutiDev) formats and was built to reduce the manual typing workload for school teachers.
 
