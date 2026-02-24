@@ -23,3 +23,11 @@ logs/
 *.exe
 *.db
 *.pdb
+
+# Local configuration (DO NOT COMMIT SECRETS)
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/appsettings.*.local.json
+.env
+.env.*
+secrets.json
