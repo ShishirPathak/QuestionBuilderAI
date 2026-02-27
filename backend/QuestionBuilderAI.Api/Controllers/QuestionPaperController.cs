@@ -25,6 +25,8 @@ namespace QuestionBuilderAI.Api1.Controllers
 
         }
 
+        
+
         [HttpPost("generate")]
         public IActionResult Generate([FromBody] ExamPaperModel model)
         {

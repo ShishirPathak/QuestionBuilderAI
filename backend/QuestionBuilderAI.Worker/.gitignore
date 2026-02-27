@@ -1,0 +1,13 @@
+# Local configs (never commit secrets)
+**/appsettings.Development.json
+.env
+.env.*
+
+# Build
+bin/
+obj/
+
+# IDE
+.vs/
+.vscode/
+.DS_Store

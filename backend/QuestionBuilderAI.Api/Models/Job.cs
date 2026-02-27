@@ -17,6 +17,8 @@ namespace QuestionBuilderAI.Api.Models
         public int Attempts { get; set; } = 0;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? StartedAt { get; set; }
+        public DateTime? CompletedAt { get; set; }
+
         public DateTime? FinishedAt { get; set; }
         public string ResultPath { get; set; }
         public string Error { get; set; }
