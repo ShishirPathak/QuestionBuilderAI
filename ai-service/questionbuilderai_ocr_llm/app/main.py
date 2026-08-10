@@ -36,7 +36,7 @@ if not GEMINI_API_KEY:
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 # Use a supported multimodal model
-VISION_MODEL_NAME = "gemini-2.0-flash"
+VISION_MODEL_NAME = "gemini-3.6-flash"
 
 
 @app.post("/ocr/parse-question-paper")
@@ -201,12 +201,12 @@ Very important:
     # Also sort questions inside each section by their "number"
     for s in sections:
         qs = s.get("questions", [])
-    try:
-        qs.sort(key=lambda q: int(q.get("number", 0)))
-    except Exception:
-        pass
-    
-    s["questions"] = qs
+        try:
+            qs.sort(key=lambda q: int(q.get("number", 0)))
+        except (TypeError, ValueError):
+            pass
+
+        s["questions"] = qs
 
     # Ensure metadata is filled even if Gemini omits it
     data.setdefault("schoolName", schoolName)

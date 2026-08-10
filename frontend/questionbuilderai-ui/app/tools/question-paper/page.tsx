@@ -155,7 +155,7 @@ export default function QuestionPaperToolPage() {
                 type="text"
                 value={schoolName}
                 onChange={(e) => setSchoolName(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>
             <div>
@@ -166,7 +166,7 @@ export default function QuestionPaperToolPage() {
                 type="text"
                 value={examTitle}
                 onChange={(e) => setExamTitle(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -178,7 +178,7 @@ export default function QuestionPaperToolPage() {
                 value={className}
                 onChange={(e) => setClassName(e.target.value)}
                 placeholder="e.g., V, VI, VII, Std 5, etc."
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-emerald-500"
               />
             </div>
 
@@ -192,7 +192,7 @@ export default function QuestionPaperToolPage() {
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="e.g., English II, Hindi, Math, EVS"
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-emerald-500"
               />
             </div>
 
@@ -204,7 +204,7 @@ export default function QuestionPaperToolPage() {
                 type="number"
                 value={maxMarks}
                 onChange={(e) => setMaxMarks(Number(e.target.value) || 0)}
-                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>
             <div>
@@ -215,7 +215,7 @@ export default function QuestionPaperToolPage() {
                 type="text"
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>
           </div>
