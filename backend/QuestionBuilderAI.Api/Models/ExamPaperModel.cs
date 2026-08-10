@@ -15,6 +15,7 @@ namespace QuestionBuilderAI.Api.Models
     {
         public string Name { get; set; } = "";            // e.g. "Section A"
         public string Instructions { get; set; } = "";    // e.g. "Answer any five..."
+        public string Passage { get; set; } = "";         // reading passage/source text
         public List<QuestionModel> Questions { get; set; } = new();
     }
 

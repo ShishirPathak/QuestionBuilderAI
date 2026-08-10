@@ -107,6 +107,7 @@ Return data in this EXACT JSON shape (no extra keys, no comments, no explanation
     {{
       "name": "string",               // e.g. "Q.No.1 Answer in one word."
       "instructions": "string",       // any hint line, or "" if none
+      "passage": "string",            // full reading passage/source text, or "" if none
       "questions": [
         {{
           "number": number,           // 1,2,3,... (will later become (a),(b),(c))
@@ -123,6 +124,11 @@ Important formatting rules:
 - Each major question group like "Q.No.1", "Q.No.2" MUST become one element in "sections".
 - The "name" property should start with "Q.No." followed by the number and the title.
   Example: "Q.No.1 Answer in one word."
+- If a question contains a passage, poem, story, letter, dialogue, or other source
+  text that students must read, copy ALL of that text verbatim into "passage".
+  Do not summarize it, shorten it, or place it inside "instructions".
+- Preserve the passage even when its related sub-questions continue on another image.
+- Set "passage" to "" for groups that do not contain source text.
 - If the total marks for a group are given (e.g. (10)), set "marks" for EACH question in that group to that total value.
   (The backend will only read the marks from the first question.)
 - "number" for questions should be 1,2,3,... in the order they appear within that group.
@@ -137,6 +143,9 @@ Use these defaults if the information is missing on the paper:
 
 Very important:
 - Respond with VALID JSON ONLY. No ``` fences. No natural language explanation.
+- Use UK English for all English text, including British spelling and punctuation
+  conventions (for example: colour, organise, centre, travelled).
+- Do not change proper nouns, names, quotations, or the meaning of the source text.
 """
 
 

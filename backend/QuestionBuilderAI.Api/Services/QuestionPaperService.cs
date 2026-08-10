@@ -83,6 +83,10 @@ namespace QuestionBuilderAI.Api.Services
                     if (!string.IsNullOrWhiteSpace(section.Instructions))
                         body.Append(CreateParagraph(section.Instructions, italic: true));
 
+                    // Reading passage/source material must appear before its questions.
+                    if (!string.IsNullOrWhiteSpace(section.Passage))
+                        body.Append(CreateParagraph(section.Passage));
+
                     // Questions: compact spacing, NO per-question marks
                     int qIndex = 1;
                     foreach (var q in section.Questions)
@@ -159,6 +163,13 @@ namespace QuestionBuilderAI.Api.Services
                         $"{groupTitle}    ({groupMarks})",
                         bold: true));
 
+                    if (!string.IsNullOrWhiteSpace(group.Instructions))
+                        body.Append(CreateParagraph(group.Instructions, italic: true));
+
+                    // Keep comprehension passages with the question group that uses them.
+                    if (!string.IsNullOrWhiteSpace(group.Passage))
+                        body.Append(CreateParagraph(group.Passage));
+
                     // Sub questions: (a), (b), (c) etc.
                     foreach (var q in group.Questions)
                     {
@@ -189,6 +200,12 @@ namespace QuestionBuilderAI.Api.Services
             bool compact = false)   // 👈 new flag
         {
             var runProps = new RunProperties();
+
+            // Mark generated English text as UK English for Word spell-checking.
+            runProps.Append(new Languages
+            {
+                Val = "en-GB"
+            });
 
             if (bold)
                 runProps.Append(new Bold());
@@ -287,6 +304,9 @@ namespace QuestionBuilderAI.Api.Services
 
                     if (!string.IsNullOrWhiteSpace(section.Instructions))
                         body.Append(CreateParagraphWithFont(section.Instructions, "Kruti Dev 010", italic: true));
+
+                    if (!string.IsNullOrWhiteSpace(section.Passage))
+                        body.Append(CreateParagraphWithFont(section.Passage, "Kruti Dev 010"));
 
                     foreach (var q in section.Questions)
                     {
